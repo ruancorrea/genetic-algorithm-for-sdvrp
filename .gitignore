@@ -1,4 +1,6 @@
 venv
 data
 
+output.prof
+
 __pycache__
