@@ -1,40 +1,6 @@
-from dataclasses import dataclass
-from typing import Iterable, Optional, Any
-
-from utils.models import Point
-
-import requests
+import time
 import numpy as np
-
-EARTH_RADIUS_METERS = 6371000
-
-
-@dataclass
-class OSRMConfig:
-    host: str = "http://localhost:5000"
-    timeout_s: int = 600
-
-
-def calculate_distance_matrix_m(
-    points: Iterable[Point], config: Optional[OSRMConfig] = None
-):
-    config = config or OSRMConfig()
-
-    if len(points) < 2:
-        return 0
-
-    coords_uri = ";".join(
-        ["{},{}".format(point.lng, point.lat) for point in points]
-    )
-
-    response = requests.get(
-        f"{config.host}/table/v1/driving/{coords_uri}?annotations=distance",
-        timeout=config.timeout_s,
-    )
-
-    response.raise_for_status()
-
-    return np.array(response.json()["distances"])
+from scipy.spatial.distance import cdist
 
 
 def euclidean(a: np.ndarray, b: np.ndarray) -> float:
@@ -85,3 +51,34 @@ def haversine(a: np.ndarray, b: np.ndarray) -> float:
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
     r = 6371000  # Radius of the Earth in meters
     return r * c
+
+def get_distance(distance_cache, point1, point2) -> np.float64:
+    if np.array_equal(point1, point2):
+        return 0
+    key = (
+        tuple(np.asarray([point1[0], point1[1]], dtype=float)),
+        tuple(np.asarray([point2[0], point2[1]], dtype=float))
+    )
+    if key not in distance_cache:
+        key = (key[1], key[0])
+    return distance_cache[key]
+
+
+def get_distance_cache(batches):
+    ini = time.time()
+    point_sets = [np.asarray([d.point.lat, d.point.lng], dtype=float) for batch in batches for d in batch.deliveries]
+    all_points = np.unique(np.vstack(point_sets), axis=0)
+    dist_matrix = cdist(all_points, all_points)
+
+    # Transforma pontos em tuplas (hashable) para usar como chave
+    tuple_points = [tuple(p) for p in all_points]
+    distance_cache = {}
+
+    for i in range(len(tuple_points)):
+        for j in range(i + 1, len(tuple_points)):  # Evita pares repetidos (i,j) e (j,i)
+            pi, pj = tuple_points[i], tuple_points[j]
+            d = dist_matrix[i, j]
+            distance_cache[(pi, pj)] = d
+    final = time.time()
+    print("Cache de distância carregado de tamanho", len(distance_cache), final-ini)
+    return distance_cache
