@@ -7,20 +7,18 @@ the region.
 import logging
 import os
 from dataclasses import dataclass
+import random
 from typing import Optional, List, Dict
 from multiprocessing import Pool
 from argparse import ArgumentParser
-from pathlib import Path
 
 import numpy as np
-from sklearn.cluster import KMeans
 from tqdm import tqdm
 
-from core.clustering import get_centroids, predictions
+from core.clustering import predictions
 from data.load_data import loader_instances
 from logic.batching import Batching
-from metaheuristics.genetic__algorithm import GeneticAlgorithm
-from utils.helpers import get_instances
+from metaheuristics.genetic_algorithm import GenericAlgorithm, GeneticAlgorithmParams
 from utils.models import (
     Delivery,
     CVRPInstance,
@@ -70,18 +68,10 @@ class KMeansGeneticAlgorithm:
 
 
 def pretrain(
-    instances: List[CVRPInstance], 
-    batches: List[CVRPInstance],
-    params: Optional[KMeansGeneticAlgorithmParams] = None
+    params: KMeansGeneticAlgorithmParams
 ) -> KMeansGeneticAlgorithm:
-    params = params or KMeansGeneticAlgorithmParams.get_baseline()
-
-    sub_instances = get_instances(instances, params.partitioning_range)
-    centroids = get_centroids(sub_instances, params.fixed_num_clusters)
-    n_centroids = params.partitioning_range * len(sub_instances)
-    logger.info(f"Applying Genetic Algorithm in search of the {params.fixed_num_clusters} best centroids. ")
-    generic_algorithm = GeneticAlgorithm(batches, centroids, n_centroids, params.fixed_num_clusters)
-    chosen_centroids = generic_algorithm.run()
+    
+    chosen_centroids = GenericAlgorithm(params)
 
     return KMeansGeneticAlgorithm(
         params=params,
@@ -167,22 +157,6 @@ def finish(instance: CVRPInstance, model: KMeansGeneticAlgorithm) -> CVRPSolutio
         ],
     )
 
-
-def solve_instance(
-    model: KMeansGeneticAlgorithm, instance: CVRPInstance
-) -> CVRPSolution:
-    """Solve an instance dinamically using a solver model"""
-    logger.info("Finetunning on evaluation instance.")
-    model_finetuned = finetune(model, instance)
-
-    logger.info("Starting to dynamic route.")
-    for delivery in tqdm(instance.deliveries):
-        model_finetuned = route(model_finetuned, delivery)
-
-    return finish(instance, model_finetuned)
-
-
-
 def create_folders(region):
     kg_dir = os.path.join(solutions_dir, 'kmeans_genetic_algorithm')
     region_dir = os.path.join(kg_dir, region)
@@ -202,6 +176,7 @@ if __name__ == "__main__":
     
     parser = ArgumentParser()
     parser.add_argument("--region", type=str, required=True)
+    parser.add_argument("--params", type=str, required=True)
     args = parser.parse_args()
     print('region', args.region)
     train_instances = loader_instances(args.region, "train")
@@ -212,8 +187,12 @@ if __name__ == "__main__":
 
     output_dir = create_folders(args.region)
 
+    params = GeneticAlgorithmParams.from_json(args.params)
+    params.rng = random.Random(params.seed)
+    params.batches=batches_train
+
     logger.info("Pretraining on training instances.")
-    model = pretrain(train_instances)
+    model = pretrain(params)
 
     def solve(file):
         instance = CVRPInstance.from_file(file)

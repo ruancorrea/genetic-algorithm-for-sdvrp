@@ -1,0 +1,9 @@
+{
+    "population_size":25,
+    "generations": 75,
+    "number_individuals": 28,
+    "mutation_rate": 0.15,
+    "fitness_cache": {},
+    "seed":610,
+    "slice_interval": [15, 30, 45, 90]
+}
