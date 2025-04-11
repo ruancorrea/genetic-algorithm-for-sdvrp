@@ -2,12 +2,16 @@ import multiprocessing
 import numpy as np
 
 from core.clustering import create_model
-from logic.icvrp import icvrp_online_for_metaheuristic as allocation
+from logic.icvrp import allocation_opt as allocation
+import copy
+
 
 class Manager:
-    def __init__(self, batches=None, centroids=[]):
+    def __init__(self, batches: list=None, routes_cache: dict=None, centroids=[], distance_cache={}):
         self.batches=batches
         self.centroids=centroids
+        self.routes_cache=routes_cache
+        self.distance_cache=distance_cache
         self.types = {}
         self.loading_types()
 
@@ -15,7 +19,7 @@ class Manager:
         if self.batches:
             self.types["batch"] = { 
                 "funct": self.process_batch,
-                "args": [(batch, self.centroids) for batch in self.batches]
+                "args": [(batch, self.centroids, copy.deepcopy(self.routes_cache), copy.deepcopy(self.distance_cache)) for batch in self.batches]
             }
 
     def process_subinstance(self, subinstances, n_clusters):
@@ -23,8 +27,8 @@ class Manager:
         c= create_model(points, n_clusters)
         return {len(subinstances): c}
 
-    def process_batch(self, batch, centroids):
-        distance = allocation(batch, centroids)
+    def process_batch(self, batch, centroids, routes_cache, distance_cache):
+        distance = allocation(batch, centroids, routes_cache, distance_cache)
         return {batch.name: distance}
 
     def get(self, application):
