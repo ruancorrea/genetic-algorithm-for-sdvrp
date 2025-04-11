@@ -1,5 +1,5 @@
 
-from core.distance import euclidean as calculate_distance 
+from core.distance import euclidean as calculate_distance, get_distance 
 import numpy as np
 
 def bellmoreNehauserHeuristic(a: np.ndarray, b: np.ndarray, p: np.ndarray) -> tuple:
@@ -39,3 +39,38 @@ def applicationHeuristic(p: np.ndarray, points: list) -> tuple:
     if choose > 0:
         index = len(points)-1
     return distance, index
+
+
+def nearest_neighbor_heuristic_optimized(points, distance_cache):
+    """
+    Constrói uma rota para o TSP usando a heurística do vizinho mais próximo,
+    utilizando cache de distâncias entre pontos (por coordenadas, não índices).
+
+    Args:
+        points (np.ndarray): Array de shape (n, d) com as coordenadas dos pontos.
+
+    Returns:
+        tuple: (rota como lista de pontos, distância total percorrida)
+
+    Raises:
+        KeyError: Se algum par de pontos não for encontrado no cache.
+    """
+    num_points = points.shape[0]
+    route = [tuple(points[0])]
+    unvisited = set(tuple(p) for p in points[1:])
+    total_distance = 0
+    current_point = route[-1]
+
+    while unvisited:
+        nearest_point = min(
+            unvisited,
+            key=lambda p: get_distance(distance_cache, current_point, np.array(p))
+        )
+        total_distance += get_distance(distance_cache, current_point, nearest_point) 
+        route.append(nearest_point)
+        unvisited.remove(nearest_point)
+        current_point = nearest_point
+
+    total_distance += get_distance(distance_cache, np.array(route[-1]), np.array(route[0]))  
+
+    return route, total_distance
