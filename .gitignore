@@ -1,5 +1,6 @@
 venv
-data
+data/cvrp-instances-1.0
+data/delivery-instances-1.0
 
 output.prof
 
