@@ -247,11 +247,11 @@ def run(params: GeneticAlgorithmParams):
     return get_selected_centroids(best_individual, params.candidates)
 
 
-def GenericAlgorithm(params: GeneticAlgorithmParams):
+def GenericAlgorithm(instances: List[CVRPInstance], params: GeneticAlgorithmParams):
 
     params.distance_cache = get_distance_cache(params.batches)
 
-    instances_split = get_instances(train_instances, params.slice_interval)
+    instances_split = get_instances(instances, params.slice_interval)
     params.candidates = get_centroids(instances_split, params.number_individuals)
     print(len(params.candidates), len(instances_split), params.candidates.shape[0])
 
@@ -271,7 +271,13 @@ def GenericAlgorithm(params: GeneticAlgorithmParams):
     fim = time.time()
     print("Solução GA", result_ga_centroids, fim-ini)
 
-    #plot(initial_centroids, ga_centroids)
+    plot(
+        initial_centroids, 
+        ga_centroids,         
+        title_1=f"Centroides iniciais - {round(result_initial_centroids, 2)}", 
+        title_2=f"Centroides escolhidos - {round(result_ga_centroids, 2)}",
+        title_3=f"Comparação dos Centroides - {round(result_initial_centroids - result_ga_centroids, 2)}"
+    )
 
     return ga_centroids
 
@@ -287,8 +293,8 @@ if __name__ == "__main__":
     train_instances = loader_instances(args.region, "train")
     eval_files = loader_instances(args.region, "dev", files_return=True)
 
-    batches_train = Batching(train_instances, batch_size=500, seed=610, test_size=0.1, count_batches=25, directory="train").get()
-    batches_dev = Batching(train_instances, batch_size=500, seed=610, test_size=0.1, count_batches=25, directory="dev", files_return=True).get()
+    batches_train = Batching(train_instances, batch_size=2500, seed=610, test_size=0.1, count_batches=5, directory="train").get()
+    #batches_dev = Batching(train_instances, batch_size=2500, seed=610, test_size=0.1, count_batches=25, directory="dev", files_return=True).get()
 
     params = GeneticAlgorithmParams.from_json(args.params)
     params.rng = random.Random(params.seed)

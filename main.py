@@ -19,11 +19,11 @@ if __name__ == "__main__":
 
     train_instances = loader_instances(args.region, "train")
     ini = time.time()
-    params.batches = Batching(train_instances, batch_size=1000, seed=610, test_size=0.1, count_batches=5).get()
+    params.batches = Batching(train_instances, batch_size=2500, seed=610, test_size=0.1, count_batches=5).get()
     final = time.time()
     print(len(params.batches), "batches processados.", final-ini)
 
-    centroids = GenericAlgorithm(params)
+    centroids = GenericAlgorithm(train_instances, params)
     print(centroids)
 
 ## python -m cProfile -s time main.py --region rj-5 --params params.json
